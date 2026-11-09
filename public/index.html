@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Snow Impostors - Batalla de Banderas en la Nieve</title>
+  
+  <meta property="og:title" content="Snow Impostors - Multijugador Nevado">
+  <meta property="og:description" content="¡Captura la bandera enemiga en este intenso juego multijugador estilo Among Us en la nieve!">
+  <meta property="og:image" content="https://images.unsplash.com/photo-1517299321609-52687d1bc55a?w=1200">
+  <meta property="og:type" content="website">
+
+  <link rel="stylesheet" href="style.css">
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+  <div id="pantalla-menu" class="pantalla">
+    <div class="menu-card">
+      <h1 class="titulo-juego">❄️ SNOW IMPOSTORS ❄️</h1>
+      <p class="subtitulo">Conejos Azules vs Venados Rojos</p>
+      
+      <div class="grupo-input">
+        <label>Tu Apodo:</label>
+        <input type="text" id="input-apodo" maxlength="15" placeholder="Ej. Copito99">
+      </div>
+
+      <div class="menu-botones">
+        <button class="btn btn-azul" onclick="app.crearSala('bot')">🤖 Jugar vs Bot</button>
+        <button class="btn btn-morado" onclick="app.crearSala('pareja')">👥 Modo Pareja (1v1)</button>
+        <button class="btn btn-verde" onclick="app.crearSala('grupo')">🌐 Crear Grupo (Hasta 59)</button>
+      </div>
+
+      <div class="grupo-input unirse-box">
+        <label>¿Tienes un código?</label>
+        <div class="fila-unirse">
+          <input type="text" id="input-codigo" maxlength="6" placeholder="CÓDIGO">
+          <button class="btn btn-naranja" onclick="app.unirseSala()">Unirse</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="pantalla-lobby" class="pantalla oculto">
+    <div class="lobby-card">
+      <h2>Sala de Espera</h2>
+      <div class="codigo-display">
+        <span>Código:</span>
+        <strong id="lbl-codigo-sala">------</strong>
+      </div>
+      
+      <div class="acciones-invitacion">
+        <button class="btn-sm" onclick="app.copiarEnlace()">📋 Copiar Enlace</button>
+        <button class="btn-sm" onclick="app.compartirRedes()">📤 Compartir</button>
+        <button class="btn-sm" onclick="app.copiarCodigo()">🔑 Copiar Código</button>
+      </div>
+
+      <p id="contador-jugadores" class="contador">Jugadores: 1 / 59</p>
+
+      <div class="listas-equipos">
+        <div class="columna-equipo azul">
+          <h3>🐰 Conejos Azules</h3>
+          <ul id="lista-azul"></ul>
+        </div>
+        <div class="columna-equipo rojo">
+          <h3>🦌 Venados Rojos</h3>
+          <ul id="lista-rojo"></ul>
+        </div>
+      </div>
+
+      <div class="lobby-footer">
+        <button id="btn-iniciar" class="btn btn-verde oculto" onclick="app.iniciarPartida()">Iniciar Partida</button>
+        <p id="lbl-esperando" class="esperando-texto">Esperando al anfitrión...</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="pantalla-juego" class="oculto">
+    <canvas id="canvas-juego"></canvas>
+    
+    <div id="hud-superior">
+      <div class="barra-energia-container">
+        <span class="energia-titulo">⚡ ENERGÍA</span>
+        <div class="barra-progreso">
+          <div id="barra-nivel" style="width: 100%;"></div>
+        </div>
+        <span id="txt-energia">100%</span>
+      </div>
+      <div id="aviso-alarma" class="aviso-alarma oculto">¡Te quedan 10 segundos! Come otro triángulo</div>
+    </div>
+
+    <div id="minimapa-container">
+      <canvas id="canvas-minimapa" width="150" height="150"></canvas>
+    </div>
+  </div>
+
+  <div id="modal-pregunta" class="modal oculto">
+    <div class="modal-card">
+      <h3 id="pregunta-titulo">Tarea de Supervivencia</h3>
+      <p id="pregunta-texto"></p>
+      <input type="text" id="input-respuesta" placeholder="Escribe aquí...">
+      <button class="btn btn-verde" onclick="app.enviarRespuesta()">Continuar</button>
+    </div>
+  </div>
+
+  <div id="pantalla-leccion" class="pantalla oculto">
+    <div class="modal-card alerta-roja">
+      <h2>¡HAS SIDO ENGAÑADO!</h2>
+      <p class="leccion-texto">Lección: nunca des datos personales a un juego o página desconocida.</p>
+      <div class="menu-botones">
+        <button class="btn btn-azul" onclick="app.volverLobby()">Volver al lobby</button>
+        <button class="btn btn-rojo" onclick="app.irInicio()">Ir al inicio</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="pantalla-eliminado" class="pantalla oculto">
+    <div class="modal-card">
+      <h2>TE QUEDASTE SIN ENERGÍA</h2>
+      <p>Tu personaje se ha congelado en la nieve.</p>
+      <div class="menu-botones">
+        <button class="btn btn-azul" onclick="app.volverLobby()">Volver al lobby</button>
+        <button class="btn btn-rojo" onclick="app.irInicio()">Ir al inicio</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="pantalla-ganador" class="pantalla oculto">
+    <div class="modal-card ganador-card">
+      <h1 id="titulo-ganador">¡EQUIPO GANADOR!</h1>
+      <p id="subtitulo-ganador"></p>
+      <p class="consejo-final">Es bueno recordar: nunca des tus datos personales ni te arriesgues solo por ganar.</p>
+      <div class="menu-botones">
+        <button class="btn btn-verde" onclick="app.iniciarPartida()">Jugar de nuevo</button>
+        <button class="btn btn-azul" onclick="app.volverLobby()">Volver al lobby</button>
+        <button class="btn btn-rojo" onclick="app.irInicio()">Ir al inicio</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
